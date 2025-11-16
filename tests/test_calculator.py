@@ -1,5 +1,5 @@
 # tests/test_calculator.py
-from mypackage import add
+from mypackage.calculator import add
 
 
 def test_add_positive_numbers():
