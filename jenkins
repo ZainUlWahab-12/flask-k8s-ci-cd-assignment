@@ -1,0 +1,54 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "my-app-image:latest"
+        KUBE_MANIFEST_DIR = "kubernetes"
+    }
+
+    stages {
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo "Building Docker image..."
+                    sh "docker build -t ${IMAGE_NAME} ."
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    echo "Applying Kubernetes manifests..."
+                    sh "kubectl apply -f ${KUBE_MANIFEST_DIR}/"
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo "Checking rollout status..."
+                    sh "kubectl rollout status deployment/flask-app"
+
+                    echo "Verifying pods..."
+                    sh "kubectl get pods -l app=flask-app"
+
+                    echo "Verifying services..."
+                    sh "kubectl get svc flask-app-service"
+                }
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Please check logs.'
+        }
+    }
+}
