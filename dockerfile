@@ -1,16 +1,18 @@
-# Minimal Dockerfile for a simple Python app
+# Use minimal Python base image
 FROM python:3.11-slim
 
-# Create app directory
+# Set working directory
 WORKDIR /app
 
-# Install dependencies first (leverage layer cache)
-COPY requirements.txt /app/
-RUN python -m pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the package code and tests (if you want tests in image)
-COPY . /app
+# Copy application code
+COPY . .
 
-# Default command — change as appropriate
-CMD ["python", "-c", "import mypackage.calculator as c; print(c.add(2,3))"]
+# Expose your app port (if using Flask)
+EXPOSE 5000
+
+# Run the Python application
+CMD ["python", "app.py"]
