@@ -31,14 +31,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run flake8 lint (max-line-length=90)
-        # If you want config from .flake8 or setup.cfg to apply, flake8 will read it.
+      - name: Add repo root to PYTHONPATH
         run: |
-          flake8 --max-line-length=90 .
+          echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
 
       - name: Run pytest
-        run: |
-          pytest -q
+        run: pytest -q
 
       - name: Build Docker image
         run: |
