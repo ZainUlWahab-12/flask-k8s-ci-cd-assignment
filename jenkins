@@ -1,0 +1,70 @@
+pipeline {
+  agent any
+
+  environment {
+    // Set these in Jenkins credentials or inject via credentials binding.
+    REGISTRY = "myregistry"
+    IMAGE_NAME = "${env.REGISTRY}/myrepo/flask-hello"
+    // Use credentials IDs created in Jenkins for docker and kube
+    DOCKER_CREDENTIALS_ID = "docker-cred-id"
+    KUBECONFIG_CREDENTIAL_ID = "kubeconfig-base64-id"
+    IMAGE_TAG = "${env.BUILD_NUMBER ?: 'local'}"
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Install & Test') {
+      steps {
+        sh 'python -m pip install --upgrade pip'
+        sh 'pip install -r requirements.txt'
+        # Add tests here if you have them:
+        # sh 'pytest -q'
+      }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        script {
+          docker.withRegistry("https://${REGISTRY}", DOCKER_CREDENTIALS_ID) {
+            def img = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+            // Optionally push
+            img.push()
+            // Also tag latest
+            img.push("latest")
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        withCredentials([string(credentialsId: KUBECONFIG_CREDENTIAL_ID, variable: 'KUBECONFIG_B64')]) {
+          sh '''
+            echo "$KUBECONFIG_B64" | base64 --decode > kubeconfig
+            export KUBECONFIG=$PWD/kubeconfig
+            # update image in deployment (requires kubectl configured for cluster)
+            kubectl set image deployment/flask-hello-deployment flask-hello=${IMAGE_NAME}:${IMAGE_TAG} --record
+            kubectl rollout status deployment/flask-hello-deployment
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "Pipeline completed successfully."
+    }
+    failure {
+      echo "Pipeline failed."
+    }
+    always {
+      cleanWs()
+    }
+  }
+}

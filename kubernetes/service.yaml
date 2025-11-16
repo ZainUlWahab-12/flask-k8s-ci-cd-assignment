@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-hello-service
+  labels:
+    app: flask-hello
+spec:
+  # For cloud environments use LoadBalancer; for local clusters use NodePort or ClusterIP
+  type: LoadBalancer
+  selector:
+    app: flask-hello
+  ports:
+    - port: 80
+      targetPort: 5000
+      protocol: TCP
+      name: http
