@@ -1,0 +1,67 @@
+pipeline {
+    // Use any available agent (Jenkins node) to run the pipeline
+    agent any
+
+    // Define environment variables for reuse throughout the pipeline
+    environment {
+        IMAGE_NAME = "my-app-image:latest"     // Docker image name and tag
+        KUBE_MANIFEST_DIR = "kubernetes"       // Directory containing Kubernetes manifests
+    }
+
+    stages {
+
+        // Stage 1: Build the Docker image
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo "Building Docker image..."
+                    // Build Docker image from Dockerfile in repo root
+                    // Tags it as ${IMAGE_NAME}, e.g., my-app-image:latest
+                    sh "docker build -t ${IMAGE_NAME} ."
+                }
+            }
+        }
+
+        // Stage 2: Deploy the image to Kubernetes
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    echo "Applying Kubernetes manifests..."
+                    // Apply all YAML manifests in the kubernetes/ folder
+                    // This creates/updates Deployment, Service, etc.
+                    sh "kubectl apply -f ${KUBE_MANIFEST_DIR}/"
+                }
+            }
+        }
+
+        // Stage 3: Verify that the deployment succeeded
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo "Checking rollout status..."
+                    // Waits for deployment to finish rolling out
+                    sh "kubectl rollout status deployment/flask-app"
+
+                    echo "Verifying pods..."
+                    // List pods with label app=flask-app to check if they are running
+                    sh "kubectl get pods -l app=flask-app"
+
+                    echo "Verifying services..."
+                    // List the service to confirm it is created and accessible
+                    sh "kubectl get svc flask-app-service"
+                }
+            }
+        }
+
+    }
+
+    // Post actions run after the stages, depending on success/failure
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Please check logs.'
+        }
+    }
+}
